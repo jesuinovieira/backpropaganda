@@ -181,3 +181,6 @@ logs/
 # Temporary files
 tmp/
 temp/
+
+# Others
+data/
