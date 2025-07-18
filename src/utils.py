@@ -1,58 +1,36 @@
-import contextlib
-import io
 import torchvision
 import torch
+from torch.utils.data import DataLoader
+from torchvision import transforms
 
 
-def download_mnist(train_prop=0.8, keep_prop=0.5, path="./data/"):
-    # Create path if it does not exist
-    if not torch.os.path.exists(path):
-        torch.os.makedirs(path)
+def load_mnist_data(batch_size, path='./data'):
+    """Load and preprocess the MNIST dataset."""
+    # Define transformations
+    mnist_transform = transforms.Compose([
+        transforms.Resize((32, 32)),  # Resize to 32x32 for LeNet compatibility
+        transforms.ToTensor(),        # Convert to tensor
+        transforms.Normalize(mean=(0.1307,), std=(0.3081,))  # MNIST normalization
+    ])
 
-    # If the MNIST datasets already exist, load them from files
-    if torch.os.path.exists(path + "MNIST"):
-        print("MNIST datasets already exist, loading from files")
-
-        # Load the datasets from the existing files
-        train = torch.load(path + "train.pt", weights_only=False)
-        val = torch.load(path + "val.pt", weights_only=False)
-        test = torch.load(path + "test.pt", weights_only=False)
-
-        return train, val, test
-
-    # Otherwise, download the MNIST datasets
-    print("Downloading MNIST datasets")
-    valid_prop = 1 - train_prop
-    discard_prop = 1 - keep_prop
-
-    transform = torchvision.transforms.Compose(
-        [
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize((0.1307,), (0.3081,)),
-        ]
+    # Load datasets
+    train_val_dataset = torchvision.datasets.MNIST(
+        root='./data', train=True, transform=mnist_transform, download=True
+    )
+    test_dataset = torchvision.datasets.MNIST(
+        root='./data', train=False, transform=mnist_transform, download=True
     )
 
-    with contextlib.redirect_stdout(io.StringIO()):  # to suppress output
-        train = torchvision.datasets.MNIST(
-            root=path, train=True, download=True, transform=transform
-        )
-        test = torchvision.datasets.MNIST(
-            root=path, train=False, download=True, transform=transform
-        )
-
-    train, val, _ = torch.utils.data.random_split(
-        train, [train_prop * keep_prop, valid_prop * keep_prop, discard_prop]
+    # Split training into train/validation (90%/10%)
+    train_size = int(0.9 * len(train_val_dataset))
+    val_size = len(train_val_dataset) - train_size
+    train_dataset, val_dataset = torch.utils.data.random_split(
+        train_val_dataset, [train_size, val_size]
     )
-    test, _ = torch.utils.data.random_split(test, [keep_prop, discard_prop])
 
-    print("Number of examples retained:")
-    print(f"  {len(train)} (training)")
-    print(f"  {len(val)} (validation)")
-    print(f"  {len(test)} (test)")
+    # Create data loaders
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
-    # Save the datasets to the specified path
-    torch.save(train, path + "train.pt")
-    torch.save(val, path + "val.pt")
-    torch.save(test, path + "test.pt")
-
-    return train, val, test
+    return train_loader, val_loader, test_loader
