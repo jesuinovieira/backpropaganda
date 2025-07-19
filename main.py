@@ -3,7 +3,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from src import model
+from src import models
 from src import train
 from src import utils
 
@@ -59,17 +59,17 @@ if __name__ == "__main__":
     class_names = [str(i) for i in range(n_classes)]
 
     # Initialize model, loss, optimizer
-    model = model.LeNet5(n_classes=n_classes)
+    models = models.LeNet5(n_classes=n_classes)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(models.parameters(), lr=learning_rate)
 
-    total_params = sum(p.numel() for p in model.parameters())
-    print(model, "\n")
+    total_params = sum(p.numel() for p in models.parameters())
+    print(models, "\n")
     print(f"Total parameters: {total_params:,}")
 
     # Train model using backpropagation
     history = train.backprop(
-        model=model,
+        model=models,
         train_loader=train_loader,
         val_loader=val_loader,
         criterion=criterion,
@@ -81,11 +81,11 @@ if __name__ == "__main__":
     # Save trained model
     save_path = "results/backprop.pth"
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    torch.save(model.state_dict(), save_path)
+    torch.save(models.state_dict(), save_path)
     print(f"\nTraining completed. Model saved to '{save_path}'")
 
     # Evaluate model
-    test_accuracy, predictions, true_labels = evaluate_model(model, test_loader)
+    test_accuracy, predictions, true_labels = evaluate_model(models, test_loader)
 
     # print("\nDetailed Classification Report:")
     # print(classification_report(true_labels, predictions, target_names=class_names))
