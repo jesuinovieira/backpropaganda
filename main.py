@@ -3,86 +3,103 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from sklearn.metrics import classification_report
 from src import model
 from src import train
 from src import utils
 
 
-def evaluate_model(model, test_loader, class_names):
-    """Evaluate the trained model on test data."""
+def evaluate_model(
+    model: nn.Module, test_loader: torch.utils.data.DataLoader, class_names: list[str]
+) -> tuple[float, list[int], list[int]]:
+    """Evaluates a trained model on test data.
+
+    Args:
+        model: Trained PyTorch model.
+        test_loader: DataLoader containing test dataset.
+        class_names: List of class names for the classification report.
+
+    Returns:
+        Tuple containing:
+            - Test accuracy as a percentage.
+            - List of predicted labels.
+            - List of true labels.
+    """
     model.eval()
     correct = 0
     total = 0
-    predictions = []
-    true_labels = []
+    predictions: list[int] = []
+    true_labels: list[int] = []
 
     with torch.no_grad():
-        for data, targets in test_loader:
-            outputs = model(data)
-            _, predicted = torch.max(outputs.data, 1)
+        for inputs, targets in test_loader:
+            outputs = model(inputs)
+            _, predicted = torch.max(outputs.data, dim=1)
 
             total += targets.size(0)
             correct += (predicted == targets).sum().item()
 
-            predictions.extend(predicted.cpu().numpy())
-            true_labels.extend(targets.cpu().numpy())
+            predictions.extend(predicted.cpu().tolist())
+            true_labels.extend(targets.cpu().tolist())
 
     test_accuracy = 100.0 * correct / total
 
-    print(f"Test Accuracy: {test_accuracy:.2f}%")
-    print(f"Test Error Rate: {100 - test_accuracy:.2f}%")
-    print("\nDetailed Classification Report:")
-    print(classification_report(true_labels, predictions, target_names=class_names))
-
+    print(
+        f"Test Accuracy: {test_accuracy:.2f}% | Error Rate: {100 - test_accuracy:.2f}%"
+    )
     return test_accuracy, predictions, true_labels
 
 
 if __name__ == "__main__":
-    BATCH_SIZE = 32
-    N_CLASSES = 10
-    LEARNING_RATE = 0.001
+    # Config
+    batch_size = 32
+    n_classes = 10
+    learning_rate = 0.001
     n_epochs = 5
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    train_loader, val_loader, test_loader = utils.load_mnist_data(BATCH_SIZE)
-    class_names = [str(i) for i in range(10)]
+    # Load data
+    train_loader, val_loader, test_loader = utils.load_mnist_data(batch_size)
+    class_names = [str(i) for i in range(n_classes)]
 
-    # Initialize model, loss, and optimizer
-    model = model.LeNet5(n_classes=N_CLASSES)
+    # Initialize model, loss, optimizer
+    model = model.LeNet5(n_classes=n_classes)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-    # Model info
     total_params = sum(p.numel() for p in model.parameters())
-    print(f"Model initialized with {total_params:,} parameters")
-    print(f"Model architecture: {model}\n")
+    print(model, "\n")
+    print(f"Total parameters: {total_params:,}")
 
-    # Train the model
+    # Train model using backpropagation
     history = train.backprop(
-        model, train_loader, val_loader, criterion, optimizer, n_epochs, device
+        model=model,
+        train_loader=train_loader,
+        val_loader=val_loader,
+        criterion=criterion,
+        optimizer=optimizer,
+        num_epochs=n_epochs,
+        device=device,
     )
 
-    dst = "results/backprop.pth"
-    print(f"\nTraining completed! Saving model to '{dst}'")
+    # Save trained model
+    save_path = "results/backprop.pth"
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    torch.save(model.state_dict(), save_path)
+    print(f"\nTraining completed. Model saved to '{save_path}'")
 
-    if not os.path.exists("results"):
-        os.makedirs("results")
-
-    torch.save(model.state_dict(), dst)
-
-    # Evaluate the model
+    # Evaluate model
     test_accuracy, predictions, true_labels = evaluate_model(
         model, test_loader, class_names
     )
 
+    # print("\nDetailed Classification Report:")
+    # print(classification_report(true_labels, predictions, target_names=class_names))
+
     # Final summary
-    print("\n" + "=" * 50)
-    print("TRAINING SUMMARY")
-    print("=" * 50)
-    print(f"Final Training Accuracy: {history['train_accuracies'][-1]:.2f}%")
-    print(f"Final Validation Accuracy: {history['val_accuracies'][-1]:.2f}%")
-    print(f"Final Test Accuracy: {test_accuracy:.2f}%")
-    print(f"Total Parameters: {total_params:,}")
-    print(f"Training Epochs: {n_epochs}")
-    print("=" * 50)
+    print("\nBackpropagation – Training Summary")
+    print("-" * 60)
+    print(f"Train Accuracy: {history['train_accuracies'][-1]:.2f}%")
+    print(f"Val Accuracy: {history['val_accuracies'][-1]:.2f}%")
+    print(f"Test Accuracy: {test_accuracy:.2f}%")
+    print(f"Total Params: {total_params:,}")
+    print(f"Epochs Trained: {n_epochs}")
