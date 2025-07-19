@@ -17,16 +17,17 @@ class ConvNeuralNet(nn.Module):
     - Linear(120, 84) -> ReLU
     - Linear(84, 10) -> Output (logits)
     """
+
     def __init__(self, num_classes=NUM_CLASSES):
         super(ConvNeuralNet, self).__init__()
 
         # Convolutional layers
-        self.conv1 = nn.Conv2d(1, 6, 5)      # 1 input channel, 6 output, 5x5 kernel
-        self.conv2 = nn.Conv2d(6, 16, 5)     # 6 input channels, 16 output, 5x5 kernel
+        self.conv1 = nn.Conv2d(1, 6, 5)  # 1 input channel, 6 output, 5x5 kernel
+        self.conv2 = nn.Conv2d(6, 16, 5)  # 6 input channels, 16 output, 5x5 kernel
 
         # Fully connected layers
-        self.fc1 = nn.Linear(16 * 5 * 5, 120)   # Flattened conv output -> 120 features
-        self.fc2 = nn.Linear(120, LATENT_DIM)   # 120 -> 84 features (latent)
+        self.fc1 = nn.Linear(16 * 5 * 5, 120)  # Flattened conv output -> 120 features
+        self.fc2 = nn.Linear(120, LATENT_DIM)  # 120 -> 84 features (latent)
         self.fc3 = nn.Linear(LATENT_DIM, num_classes)  # 84 -> 10 classes
 
     def forward(self, x):

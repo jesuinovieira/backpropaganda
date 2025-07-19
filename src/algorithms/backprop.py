@@ -1,11 +1,8 @@
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 
 
 def train(model, train_loader, val_loader, criterion, optimizer, num_epochs):
     """Train the CNN model and track performance."""
-
     # Initialize tracking
     train_losses, train_accuracies = [], []
     val_losses, val_accuracies = [], []
@@ -62,13 +59,13 @@ def train(model, train_loader, val_loader, criterion, optimizer, num_epochs):
 
         # Print progress every 3 epochs
         if (epoch + 1) % 3 == 0 or epoch == 0:
-            print(f'Epoch [{epoch+1}/{num_epochs}]')
-            print(f'  Train Loss: {train_loss:.4f}, Train Acc: {train_accuracy:.2f}%')
-            print(f'  Val Loss: {val_loss:.4f}, Val Acc: {val_accuracy:.2f}%')
+            print(f"Epoch [{epoch+1}/{num_epochs}]")
+            print(f"  Train Loss: {train_loss:.4f}, Train Acc: {train_accuracy:.2f}%")
+            print(f"  Val Loss: {val_loss:.4f}, Val Acc: {val_accuracy:.2f}%")
 
     return {
-        'train_losses': train_losses,
-        'train_accuracies': train_accuracies,
-        'val_losses': val_losses,
-        'val_accuracies': val_accuracies
+        "train_losses": train_losses,
+        "train_accuracies": train_accuracies,
+        "val_losses": val_losses,
+        "val_accuracies": val_accuracies,
     }

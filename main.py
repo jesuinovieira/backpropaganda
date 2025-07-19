@@ -1,11 +1,12 @@
-from src import utils
+import os
+
 import torch
+import torch.nn as nn
+import torch.optim as optim
+from sklearn.metrics import classification_report
+from src import utils
 from src.algorithms import backprop
 from src.model import ConvNeuralNet
-import torch.optim as optim
-import torch.nn as nn
-from sklearn.metrics import classification_report
-import os
 
 
 def evaluate_model(model, test_loader, class_names):
@@ -29,9 +30,9 @@ def evaluate_model(model, test_loader, class_names):
 
     test_accuracy = 100.0 * correct / total
 
-    print(f'Test Accuracy: {test_accuracy:.2f}%')
-    print(f'Test Error Rate: {100 - test_accuracy:.2f}%')
-    print('\nDetailed Classification Report:')
+    print(f"Test Accuracy: {test_accuracy:.2f}%")
+    print(f"Test Error Rate: {100 - test_accuracy:.2f}%")
+    print("\nDetailed Classification Report:")
     print(classification_report(true_labels, predictions, target_names=class_names))
 
     return test_accuracy, predictions, true_labels
@@ -54,30 +55,33 @@ if __name__ == "__main__":
     # Model info
     total_params = sum(p.numel() for p in model.parameters())
     print(f"Model initialized with {total_params:,} parameters")
-    print(f"Model architecture:")
-    print(model)
+    print(f"Model architecture: {model}")
 
     # Train the model
-    history = backprop.train(model, train_loader, val_loader, criterion, optimizer, NUM_EPOCHS)
+    history = backprop.train(
+        model, train_loader, val_loader, criterion, optimizer, NUM_EPOCHS
+    )
     print("\nTraining completed!")
 
-    if not os.path.exists('results'):
-        os.makedirs('results')
+    if not os.path.exists("results"):
+        os.makedirs("results")
 
     # Save the trained model
-    torch.save(model.state_dict(), 'results/backprop.pth')
+    torch.save(model.state_dict(), "results/backprop.pth")
     print("Model saved as 'results/backprop.pth'")
- 
+
     # Evaluate the model
-    test_accuracy, predictions, true_labels = evaluate_model(model, test_loader, class_names)
+    test_accuracy, predictions, true_labels = evaluate_model(
+        model, test_loader, class_names
+    )
 
     # Final summary
-    print("\n" + "="*50)
+    print("\n" + "=" * 50)
     print("TRAINING SUMMARY")
-    print("="*50)
+    print("=" * 50)
     print(f"Final Training Accuracy: {history['train_accuracies'][-1]:.2f}%")
     print(f"Final Validation Accuracy: {history['val_accuracies'][-1]:.2f}%")
     print(f"Final Test Accuracy: {test_accuracy:.2f}%")
     print(f"Total Parameters: {total_params:,}")
     print(f"Training Epochs: {NUM_EPOCHS}")
-    print("="*50)
+    print("=" * 50)

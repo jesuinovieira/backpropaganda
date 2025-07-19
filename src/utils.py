@@ -1,24 +1,26 @@
-import torchvision
 import torch
+import torchvision
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
 
-def load_mnist_data(batch_size, path='./data'):
+def load_mnist_data(batch_size, path="./data"):
     """Load and preprocess the MNIST dataset."""
     # Define transformations
-    mnist_transform = transforms.Compose([
-        transforms.Resize((32, 32)),  # Resize to 32x32 for LeNet compatibility
-        transforms.ToTensor(),        # Convert to tensor
-        transforms.Normalize(mean=(0.1307,), std=(0.3081,))  # MNIST normalization
-    ])
+    mnist_transform = transforms.Compose(
+        [
+            transforms.Resize((32, 32)),  # Resize to 32x32 for LeNet compatibility
+            transforms.ToTensor(),  # Convert to tensor
+            transforms.Normalize(mean=(0.1307,), std=(0.3081,)),  # MNIST normalization
+        ]
+    )
 
     # Load datasets
     train_val_dataset = torchvision.datasets.MNIST(
-        root='./data', train=True, transform=mnist_transform, download=True
+        root="./data", train=True, transform=mnist_transform, download=True
     )
     test_dataset = torchvision.datasets.MNIST(
-        root='./data', train=False, transform=mnist_transform, download=True
+        root="./data", train=False, transform=mnist_transform, download=True
     )
 
     # Split training into train/validation (90%/10%)

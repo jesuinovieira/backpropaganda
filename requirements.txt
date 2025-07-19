@@ -1,4 +1,4 @@
+scikit-learn
 torch
 torchvision
 tqdm
-scikit-learn
