@@ -6,9 +6,8 @@ import torch.nn.functional as F
 class LeNet5(nn.Module):
     """LeNet-5 style convolutional neural network for digit classification.
 
-    Based on: LeCun, Y., Bottou, L., Bengio, Y., & Haffner, P. (1998).
     "Gradient-based learning applied to document recognition."
-
+    LeCun, Y., Bottou, L., Bengio, Y., & Haffner, P. (1998).
     http://vision.stanford.edu/cs598_spring07/papers/Lecun98.pdf
 
     Architecture:

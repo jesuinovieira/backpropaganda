@@ -5,8 +5,8 @@ import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import classification_report
 from src import model
+from src import train
 from src import utils
-from src.algorithms import backprop
 
 
 def evaluate_model(model, test_loader, class_names):
@@ -42,7 +42,8 @@ if __name__ == "__main__":
     BATCH_SIZE = 32
     N_CLASSES = 10
     LEARNING_RATE = 0.001
-    N_EPOCHS = 5
+    n_epochs = 5
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     train_loader, val_loader, test_loader = utils.load_mnist_data(BATCH_SIZE)
     class_names = [str(i) for i in range(10)]
@@ -55,20 +56,20 @@ if __name__ == "__main__":
     # Model info
     total_params = sum(p.numel() for p in model.parameters())
     print(f"Model initialized with {total_params:,} parameters")
-    print(f"Model architecture: {model}")
+    print(f"Model architecture: {model}\n")
 
     # Train the model
-    history = backprop.train(
-        model, train_loader, val_loader, criterion, optimizer, N_EPOCHS
+    history = train.backprop(
+        model, train_loader, val_loader, criterion, optimizer, n_epochs, device
     )
-    print("\nTraining completed!")
+
+    dst = "results/backprop.pth"
+    print(f"\nTraining completed! Saving model to '{dst}'")
 
     if not os.path.exists("results"):
         os.makedirs("results")
 
-    # Save the trained model
-    torch.save(model.state_dict(), "results/backprop.pth")
-    print("Model saved as 'results/backprop.pth'")
+    torch.save(model.state_dict(), dst)
 
     # Evaluate the model
     test_accuracy, predictions, true_labels = evaluate_model(
@@ -83,5 +84,5 @@ if __name__ == "__main__":
     print(f"Final Validation Accuracy: {history['val_accuracies'][-1]:.2f}%")
     print(f"Final Test Accuracy: {test_accuracy:.2f}%")
     print(f"Total Parameters: {total_params:,}")
-    print(f"Training Epochs: {N_EPOCHS}")
+    print(f"Training Epochs: {n_epochs}")
     print("=" * 50)
