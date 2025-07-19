@@ -9,14 +9,13 @@ from src import utils
 
 
 def evaluate_model(
-    model: nn.Module, test_loader: torch.utils.data.DataLoader, class_names: list[str]
+    model: nn.Module, test_loader: torch.utils.data.DataLoader
 ) -> tuple[float, list[int], list[int]]:
     """Evaluates a trained model on test data.
 
     Args:
         model: Trained PyTorch model.
         test_loader: DataLoader containing test dataset.
-        class_names: List of class names for the classification report.
 
     Returns:
         Tuple containing:
@@ -41,12 +40,10 @@ def evaluate_model(
             predictions.extend(predicted.cpu().tolist())
             true_labels.extend(targets.cpu().tolist())
 
-    test_accuracy = 100.0 * correct / total
+    test_acc = 100.0 * correct / total
 
-    print(
-        f"Test Accuracy: {test_accuracy:.2f}% | Error Rate: {100 - test_accuracy:.2f}%"
-    )
-    return test_accuracy, predictions, true_labels
+    print(f"Test Accuracy: {test_acc:.2f}% | Error Rate: {100 - test_acc:.2f}%")
+    return test_acc, predictions, true_labels
 
 
 if __name__ == "__main__":
@@ -88,9 +85,7 @@ if __name__ == "__main__":
     print(f"\nTraining completed. Model saved to '{save_path}'")
 
     # Evaluate model
-    test_accuracy, predictions, true_labels = evaluate_model(
-        model, test_loader, class_names
-    )
+    test_accuracy, predictions, true_labels = evaluate_model(model, test_loader)
 
     # print("\nDetailed Classification Report:")
     # print(classification_report(true_labels, predictions, target_names=class_names))
