@@ -4,9 +4,9 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from sklearn.metrics import classification_report
+from src import model
 from src import utils
 from src.algorithms import backprop
-from src.model import ConvNeuralNet
 
 
 def evaluate_model(model, test_loader, class_names):
@@ -40,15 +40,15 @@ def evaluate_model(model, test_loader, class_names):
 
 if __name__ == "__main__":
     BATCH_SIZE = 32
-    NUM_CLASSES = 10
+    N_CLASSES = 10
     LEARNING_RATE = 0.001
-    NUM_EPOCHS = 5
+    N_EPOCHS = 5
 
     train_loader, val_loader, test_loader = utils.load_mnist_data(BATCH_SIZE)
     class_names = [str(i) for i in range(10)]
 
     # Initialize model, loss, and optimizer
-    model = ConvNeuralNet(num_classes=NUM_CLASSES)
+    model = model.LeNet5(n_classes=N_CLASSES)
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
@@ -59,7 +59,7 @@ if __name__ == "__main__":
 
     # Train the model
     history = backprop.train(
-        model, train_loader, val_loader, criterion, optimizer, NUM_EPOCHS
+        model, train_loader, val_loader, criterion, optimizer, N_EPOCHS
     )
     print("\nTraining completed!")
 
@@ -83,5 +83,5 @@ if __name__ == "__main__":
     print(f"Final Validation Accuracy: {history['val_accuracies'][-1]:.2f}%")
     print(f"Final Test Accuracy: {test_accuracy:.2f}%")
     print(f"Total Parameters: {total_params:,}")
-    print(f"Training Epochs: {NUM_EPOCHS}")
+    print(f"Training Epochs: {N_EPOCHS}")
     print("=" * 50)
