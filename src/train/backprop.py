@@ -10,13 +10,13 @@ def backprop(
     val_loader: DataLoader,
     criterion: nn.Module,
     optimizer: Optimizer,
-    num_epochs: int,
+    n_epochs: int,
     device: torch.device,
 ) -> dict[str, list[float]]:
-    """Trains a model using backpropagation and evaluates on validation data.
+    """Trains a model using backpropagation algorithm.
 
-    "Learning representations by back-propagating errors."
-    Rumelhart, D. E., Hinton, G. E., & Williams, R. J. (1986).
+    "Learning representations by back-propagating errors"
+    Rumelhart, D. E., Hinton, G. E., & Williams, R. J. (1986)
     https://www.nature.com/articles/323533a0
 
     Args:
@@ -25,7 +25,7 @@ def backprop(
         val_loader: DataLoader for validation dataset.
         criterion: Loss function (e.g., nn.CrossEntropyLoss).
         optimizer: Optimization algorithm (e.g., torch.optim.SGD).
-        num_epochs: Number of training epochs.
+        n_epochs: Number of training epochs.
         device: torch.device ('cuda' or 'cpu') for computation.
 
     Returns:
@@ -38,10 +38,10 @@ def backprop(
     val_losses: list[float] = []
     val_accuracies: list[float] = []
 
-    print(f"Starting backpropagation training for {num_epochs} epochs")
+    print(f"Starting backpropagation training for {n_epochs} epochs")
     print("-" * 60)
 
-    for epoch in range(num_epochs):
+    for epoch in range(n_epochs):
         # Training phase: forward → loss → backward → update
         train_loss, train_acc = train_one_epoch(
             model, train_loader, criterion, optimizer, device
@@ -55,12 +55,12 @@ def backprop(
         val_losses.append(val_loss)
         val_accuracies.append(val_acc)
 
-        if (epoch + 1) % 5 == 0 or epoch == 0:
-            print(
-                f"Epoch [{epoch + 1}/{num_epochs}] "
-                f"Train Loss: {train_loss:.4f} | Acc: {train_acc:.2f}%  "
-                f"Val Loss: {val_loss:.4f} | Acc: {val_acc:.2f}%"
-            )
+        # if (epoch + 1) % 5 == 0 or epoch == 0:
+        print(
+            f"Epoch [{epoch + 1}/{n_epochs}] "
+            f"Train Loss: {train_loss:.4f} | Acc: {train_acc:.2f}%  "
+            f"Val Loss: {val_loss:.4f} | Acc: {val_acc:.2f}%"
+        )
 
     return {
         "train_losses": train_losses,
@@ -96,32 +96,29 @@ def train_one_epoch(
         Tuple of (average loss, accuracy for the epoch).
     """
     model.train()
-    running_loss = 0.0
+    total_loss = 0.0
+    total_samples = 0
     correct = 0
-    total = 0
 
-    for inputs, targets in dataloader:
-        inputs = inputs.to(device)
-        targets = targets.to(device)
+    for x, y in dataloader:
+        x, y = x.to(device), y.to(device)
 
         # Forward pass: compute predicted outputs
-        outputs = model(inputs)
-        loss = criterion(outputs, targets)
+        outputs = model(x)
+        loss = criterion(outputs, y)
 
         # Backward pass: compute gradients of loss w.r.t. model params
         optimizer.zero_grad()
         loss.backward()
-
-        # Update model weights using computed gradients
         optimizer.step()
 
-        running_loss += loss.item()
+        total_loss += loss.item()
         _, preds = torch.max(outputs, dim=1)
-        correct += (preds == targets).sum().item()
-        total += targets.size(0)
+        correct += (preds == y).sum().item()
+        total_samples += y.size(0)
 
-    avg_loss: float = running_loss / len(dataloader)
-    accuracy: float = 100.0 * correct / total
+    avg_loss: float = total_loss / len(dataloader)
+    accuracy: float = 100.0 * correct / total_samples
     return avg_loss, accuracy
 
 
@@ -140,23 +137,22 @@ def evaluate(
         Tuple of (average loss, accuracy).
     """
     model.eval()
-    running_loss = 0.0
+    total_loss = 0.0
+    total_samples = 0
     correct = 0
-    total = 0
 
     with torch.no_grad():
-        for inputs, targets in dataloader:
-            inputs = inputs.to(device)
-            targets = targets.to(device)
+        for x, y in dataloader:
+            x, y = x.to(device), y.to(device)
 
-            outputs = model(inputs)
-            loss = criterion(outputs, targets)
+            outputs = model(x)
+            loss = criterion(outputs, y)
 
-            running_loss += loss.item()
+            total_loss += loss.item()
             _, preds = torch.max(outputs, dim=1)
-            correct += (preds == targets).sum().item()
-            total += targets.size(0)
+            correct += (preds == y).sum().item()
+            total_samples += y.size(0)
 
-    avg_loss: float = running_loss / len(dataloader)
-    accuracy: float = 100.0 * correct / total
+    avg_loss: float = total_loss / len(dataloader)
+    accuracy: float = 100.0 * correct / total_samples
     return avg_loss, accuracy

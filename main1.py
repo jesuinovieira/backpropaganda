@@ -30,15 +30,15 @@ def evaluate_model(
     true_labels: list[int] = []
 
     with torch.no_grad():
-        for inputs, targets in test_loader:
-            outputs = model(inputs)
+        for x, y in test_loader:
+            outputs = model(x)
             _, predicted = torch.max(outputs.data, dim=1)
 
-            total += targets.size(0)
-            correct += (predicted == targets).sum().item()
+            total += y.size(0)
+            correct += (predicted == y).sum().item()
 
             predictions.extend(predicted.cpu().tolist())
-            true_labels.extend(targets.cpu().tolist())
+            true_labels.extend(y.cpu().tolist())
 
     test_acc = 100.0 * correct / total
 
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     # Config
     batch_size = 32
     n_classes = 10
-    learning_rate = 0.001
+    lr = 0.001
     n_epochs = 5
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -59,33 +59,33 @@ if __name__ == "__main__":
     class_names = [str(i) for i in range(n_classes)]
 
     # Initialize model, loss, optimizer
-    models = models.LeNet5(n_classes=n_classes)
+    model = models.LeNet5(n_classes=n_classes)
     criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(models.parameters(), lr=learning_rate)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
 
-    total_params = sum(p.numel() for p in models.parameters())
-    print(models, "\n")
+    total_params = sum(p.numel() for p in model.parameters())
+    print(model, "\n")
     print(f"Total parameters: {total_params:,}")
 
     # Train model using backpropagation
     history = train.backprop(
-        model=models,
+        model=model,
         train_loader=train_loader,
         val_loader=val_loader,
         criterion=criterion,
         optimizer=optimizer,
-        num_epochs=n_epochs,
+        n_epochs=n_epochs,
         device=device,
     )
 
     # Save trained model
     save_path = "results/backprop.pth"
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
-    torch.save(models.state_dict(), save_path)
+    torch.save(model.state_dict(), save_path)
     print(f"\nTraining completed. Model saved to '{save_path}'")
 
     # Evaluate model
-    test_accuracy, predictions, true_labels = evaluate_model(models, test_loader)
+    test_accuracy, predictions, true_labels = evaluate_model(model, test_loader)
 
     # print("\nDetailed Classification Report:")
     # print(classification_report(true_labels, predictions, target_names=class_names))

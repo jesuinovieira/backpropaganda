@@ -69,7 +69,137 @@ class LeNet5(nn.Module):
         x = self.act_fn(self.conv3(x))  # C5
 
         x = torch.flatten(x, 1)  # Flatten (N, 120)
+
         x = self.act_fn(self.fc1(x))  # F6
         x = self.fc2(x)  # Output layer
 
         return x
+
+
+class FFLinear(nn.Module):
+    """Linear layer adapted for forward-forward training."""
+
+    def __init__(self, in_features, out_features, act_fn=F.relu):
+        super().__init__()
+        self.linear = nn.Linear(in_features, out_features)
+        self.out_features = out_features
+        self.act_fn = act_fn
+
+    def forward(self, x):
+        return self.act_fn(self.linear(x))
+
+    def goodness(self, x: torch.Tensor) -> torch.Tensor:
+        return (x**2).sum(dim=1)
+
+
+class FFConv2d(nn.Module):
+    """Convolutional layer adapted for forward-forward training."""
+
+    def __init__(self, in_channels, out_channels, kernel_size, act_fn=F.relu):
+        super().__init__()
+        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size)
+        self.act_fn = act_fn
+
+    def forward(self, x):
+        return self.act_fn(self.conv(x))
+
+    def goodness(self, x: torch.Tensor) -> torch.Tensor:
+        return (x**2).sum(dim=(1, 2, 3))
+
+
+class FFLeNet5(nn.Module):
+    """LeNet-5 architecture adapted for forward-forward training.
+
+    Each layer is trained independently using local losses based on 'goodness'.
+
+    Differences from standard LeNet5 with backprop:
+
+    - The first conv layer receives class information injected into the input
+    (1 + n_classes channels)
+    - No softmax or cross-entropy: predictions come from the highest total goodness
+    across class-conditional inputs
+    """
+
+    def __init__(self, n_classes: int = 10, latent_dim: int = 84):
+        super().__init__()
+
+        # Convolutional layers
+        # self.conv1 = FFConv2d(1, 6, kernel_size=5, act_fn=F.relu)  # C1
+        self.conv1 = FFConv2d(1 + n_classes, 6, kernel_size=5, act_fn=F.relu)  # C1
+        self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)  # S2
+        self.conv2 = FFConv2d(6, 16, kernel_size=5, act_fn=F.relu)  # C3
+        self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)  # S4
+        self.conv3 = FFConv2d(16, 120, kernel_size=5, act_fn=F.relu)  # C5
+
+        # Fully connected layers
+        self.fc1 = FFLinear(in_features=120, out_features=latent_dim, act_fn=F.relu)  # F6 # fmt: skip # noqa: E501
+        self.fc2 = FFLinear(in_features=latent_dim, out_features=n_classes, act_fn=F.relu)  # Output # fmt: skip # noqa: E501
+
+        self.layers = [self.conv1, self.conv2, self.conv3, self.fc1, self.fc2]
+
+    def _normalize(self, x: torch.Tensor, eps=1e-8) -> torch.Tensor:
+        """Normalizes each sample to unit L2 norm.
+
+        Motivation:
+
+        - Encourages distributed representations
+        - Prevents large activations from dominating learning
+        - Makes comparison of goodness values more meaningful
+        """
+        return x / (x.norm(p=2, dim=1, keepdim=True) + eps)
+
+    def post_layer_transform(self, x: torch.Tensor, idx: int) -> torch.Tensor:
+        x = self._normalize(x)
+
+        if idx == 0:
+            return self.pool1(x)
+        if idx == 1:
+            return self.pool2(x)
+        if idx == 2:
+            return torch.flatten(x, 1)
+
+        return x
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Standard forward pass used for inference (not training).
+
+        Args:
+            x: Input tensor of shape (batch_size, 1, 28, 28).
+
+        Returns:
+            Activation tensor of shape (batch_size, n_classes).
+        """
+        x = self.pool1(self.conv1(x))  # C1 → S2
+        x = self.pool2(self.conv2(x))  # C3 → S4
+        x = self.conv3(x)  # C5
+
+        x = torch.flatten(x, 1)  # Flatten (N, 120)
+
+        x = self.fc1(x)  # F6
+        x = self.fc2(x)  # Output layer
+
+        return x
+
+    def goodness(self, x: torch.Tensor) -> torch.Tensor:
+        """Computes the total goodness across all layers."""
+        x1 = self.conv1(x)
+        g1 = self.conv1.goodness(x1)
+        x = self.pool1(self._normalize(x1))
+
+        x2 = self.conv2(x)
+        g2 = self.conv2.goodness(x2)
+        x = self.pool2(self._normalize(x2))
+
+        x = self.conv3(x)  # C5
+        g3 = self.conv3.goodness(x)
+
+        x = torch.flatten(self._normalize(x), 1)  # Flatten (N, 120)
+
+        x = self.fc1(x)  # F6
+        g4 = self.fc1.goodness(x)
+        x = self._normalize(x)
+
+        x = self.fc2(x)  # Output layer
+        g5 = self.fc2.goodness(x)
+
+        return g1 + g2 + g3 + g4 + g5
