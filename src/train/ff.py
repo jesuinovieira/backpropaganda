@@ -139,7 +139,7 @@ def train_one_epoch(
         #     total_samples += y.size(0)
 
     avg_loss: float = total_loss / len(dataloader)
-    accuracy: float = 100.0 * correct / total_samples if total_samples > 0 else 0.0
+    accuracy: float = 100.0 * correct / total_samples if total_samples > 0 else None
     return avg_loss, accuracy
 
 
