@@ -1,3 +1,6 @@
+import time
+
+import sklearn.metrics
 import torch
 from torch import nn
 from torch.optim import Optimizer
@@ -37,29 +40,35 @@ def backprop(
     train_accuracies: list[float] = []
     val_losses: list[float] = []
     val_accuracies: list[float] = []
+    epoch_times: list[float] = []
 
     print(f"Starting backpropagation training for {n_epochs} epochs")
     print("-" * 60)
 
     for epoch in range(n_epochs):
         # Training phase: forward → loss → backward → update
+        t1 = time.time()
         train_loss, train_acc = train_one_epoch(
             model, train_loader, criterion, optimizer, device
         )
+        epoch_times.append(time.time() - t1)
 
         # Validation phase: no gradient tracking
-        val_loss, val_acc = evaluate(model, val_loader, criterion, device)
+        val_metrics = evaluate(model, val_loader, criterion, device)
 
         train_losses.append(train_loss)
         train_accuracies.append(train_acc)
-        val_losses.append(val_loss)
-        val_accuracies.append(val_acc)
+        val_losses.append(val_metrics["loss"])
+        val_accuracies.append(val_metrics["accuracy"])
 
         # if (epoch + 1) % 5 == 0 or epoch == 0:
         print(
-            f"Epoch [{epoch + 1}/{n_epochs}] "
-            f"Train Loss: {train_loss:.4f} | Acc: {train_acc:.2f}%  "
-            f"Val Loss: {val_loss:.4f} | Acc: {val_acc:.2f}%"
+            f"Epoch: [{epoch + 1}/{n_epochs}]  "
+            f"Train Loss: {train_loss:.4f},  "
+            f"Train Acc: {train_acc:6.2f}%,  "
+            f"Val Loss: {val_metrics['loss']:.4f},  "
+            f"Val Acc: {val_metrics['accuracy']:6.2f}%,  "
+            f"Time: {epoch_times[-1]:5.2f}s"
         )
 
     return {
@@ -67,6 +76,7 @@ def backprop(
         "train_accuracies": train_accuracies,
         "val_losses": val_losses,
         "val_accuracies": val_accuracies,
+        "epoch_times": epoch_times,
     }
 
 
@@ -124,7 +134,7 @@ def train_one_epoch(
 
 def evaluate(
     model: nn.Module, dataloader: DataLoader, criterion: nn.Module, device: torch.device
-) -> tuple[float, float]:
+) -> dict[str, float]:
     """Evaluates the model on given dataset.
 
     Args:
@@ -134,11 +144,12 @@ def evaluate(
         device: Device to run evaluation on.
 
     Returns:
-        Tuple of (average loss, accuracy).
+        Dictionary with metrics.
     """
     model.eval()
     total_loss = 0.0
-    correct = 0
+    y_pred = []
+    y_true = []
 
     with torch.no_grad():
         for x, y in dataloader:
@@ -149,8 +160,22 @@ def evaluate(
             _, preds = torch.max(outputs, dim=1)
 
             total_loss += loss.item()
-            correct += (preds == y).sum().item()
+
+            y_pred.extend(preds.cpu().numpy())
+            y_true.extend(y.cpu().numpy())
 
     avg_loss: float = total_loss / len(dataloader)
-    accuracy: float = 100.0 * correct / len(dataloader.dataset)
-    return avg_loss, accuracy
+    acc = sklearn.metrics.accuracy_score(y_true, y_pred)
+    precision, recall, f1, _ = sklearn.metrics.precision_recall_fscore_support(
+        y_true, y_pred, average="macro"
+    )
+    # confmat = sklearn.metrics.confusion_matrix(y_true, y_pred)
+
+    return {
+        "loss": avg_loss,
+        "accuracy": acc,
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1,
+        # "confusion_matrix": confmat.tolist(),
+    }

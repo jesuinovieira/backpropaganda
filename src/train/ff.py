@@ -1,5 +1,7 @@
+import time
 from typing import Sequence
 
+import sklearn.metrics
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -43,33 +45,40 @@ def forward_forward(
     train_losses: list[float] = []
     train_accuracies: list[float] = []
     val_accuracies: list[float] = []
+    epoch_times: list[float] = []
 
     print(f"Starting forward-forward training for {n_epochs} epochs")
     print("-" * 60)
 
     for epoch in range(n_epochs):
+        t1 = time.time()
         train_loss, train_acc = train_one_epoch(
             model, train_loader, optimizers, device, n_classes, threshold
         )
+        epoch_times.append(time.time() - t1)
 
         # Validation phase: no gradient tracking
-        val_acc = evaluate(model, val_loader, n_classes, device)
+        val_metrics = evaluate(model, val_loader, n_classes, device)
 
         train_losses.append(train_loss)
         train_accuracies.append(train_acc)
-        val_accuracies.append(val_acc)
+        val_accuracies.append(val_metrics["accuracy"])
 
         # if (epoch + 1) % 5 == 0 or epoch == 0:
         print(
-            f"Epoch [{epoch + 1}/{n_epochs}] "
-            f"Train Loss: {train_loss:.4f} | Acc: {train_acc:.2f}%  "
-            f"Val Acc: {val_acc:.2f}%"
+            f"Epoch: [{epoch + 1}/{n_epochs}]  "
+            f"Train Loss: {train_loss:.4f},  "
+            f"Train Acc: {train_acc:6.2f}%,  "
+            f"Val Acc: {val_metrics['accuracy']:6.2f}%,  "
+            f"Time: {epoch_times[-1]:5.2f}s"
         )
 
     return {
-        "train_accuracies": train_accuracies,
         "train_losses": train_losses,
+        "train_accuracies": train_accuracies,
+        "val_losses": [None] * n_epochs,  # No global loss in FF
         "val_accuracies": val_accuracies,
+        "epoch_times": epoch_times,
     }
 
 
@@ -139,9 +148,10 @@ def evaluate(
     dataloader: DataLoader,
     n_classes: int,
     device: torch.device,
-) -> float:
+) -> dict[str, float]:
     model.eval()
-    correct = 0
+    y_pred = []
+    y_true = []
 
     with torch.no_grad():
         for x, y in dataloader:
@@ -156,10 +166,24 @@ def evaluate(
                 g_scores[:, label] = model.goodness(x_overlay)
 
             preds = g_scores.argmax(dim=1)
-            correct += (preds == y).sum().item()
 
-    accuracy: float = 100.0 * correct / len(dataloader.dataset)
-    return accuracy
+            y_pred.extend(preds.cpu().numpy())
+            y_true.extend(y.cpu().numpy())
+
+    acc = sklearn.metrics.accuracy_score(y_true, y_pred)
+    precision, recall, f1, _ = sklearn.metrics.precision_recall_fscore_support(
+        y_true, y_pred, average="macro"
+    )
+    # confmat = sklearn.metrics.confusion_matrix(y_true, y_pred)
+
+    return {
+        "loss": None,  # No global loss in FF
+        "accuracy": acc,
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1,
+        # "confusion_matrix": confmat.tolist(),
+    }
 
 
 def overlay_label(

@@ -1,7 +1,9 @@
 import os
 import sys
 
+import pandas as pd
 import torch
+import torchinfo
 
 sys.path.append(f"{os.path.dirname(__file__)}/src")
 
@@ -15,7 +17,7 @@ if __name__ == "__main__":
     batch_size = 32
     n_classes = 10
     lr = 0.001
-    n_epochs = 5
+    n_epochs = 2
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load data
@@ -27,7 +29,8 @@ if __name__ == "__main__":
     optimizers = [torch.optim.Adam(layer.parameters(), lr=lr) for layer in model.layers]
 
     n_params = sum(p.numel() for p in model.parameters())
-    print(model, "\n")
+    torchinfo.summary(model, input_size=(batch_size, 1 + n_classes, 32, 32))
+    print("")
 
     # Train model using forward-forward
     # - No criterion: FF does not use global loss
@@ -44,22 +47,24 @@ if __name__ == "__main__":
     )
 
     # Save trained model
-    save_path = "results/forward-forward.pth"
+    save_path = "results/ff-model.pth"
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     torch.save(model.state_dict(), save_path)
     print(f"\nTraining completed. Model saved to '{save_path}'")
 
-    # Evaluate model
-    test_acc = train.ff.evaluate(model, test_loader, n_classes, device)
+    # Save training history
+    dst = "results/ff-history.csv"
+    pd.DataFrame(history).to_csv(dst, index=False)
 
-    # print("\nDetailed Classification Report:")
-    # print(classification_report(true_labels, predictions, target_names=class_names))
+    # Evaluate model
+    test_metrics = train.ff.evaluate(model, test_loader, n_classes, device)
+    utils.save_metrics(test_metrics, "results/mnist-metrics.csv", "ff")
 
     # Final summary
     print("\nForward-Forward – Training Summary")
     print("-" * 60)
     print(f"Train accuracy: {history['train_accuracies'][-1]:.2f}%")
     print(f"Val accuracy: {history['val_accuracies'][-1]:.2f}%")
-    print(f"Test accuracy: {test_acc:.2f}%")
+    print(f"Test accuracy: {test_metrics['accuracy']:.2f}%")
     print(f"Params: {n_params:,}")
     print(f"Epochs: {n_epochs}")

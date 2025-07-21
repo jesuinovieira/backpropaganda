@@ -53,3 +53,11 @@ repos:
     rev: v7.0.0
     hooks:
     -   id: pyproject-flake8
+
+-   repo: https://github.com/nbQA-dev/nbQA
+    rev: 1.9.1
+    hooks:
+    -   id: nbqa-black
+        args: [--line-length=88] # optional, same as black defaults
+        additional_dependencies: [black]
+        files: \.ipynb$
