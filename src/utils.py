@@ -4,8 +4,9 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 
-def load_mnist_data(batch_size, path="./data"):
-    """Load and preprocess the MNIST dataset."""
+def load_mnist_data(
+    batch_size: int, path: str = "./data"
+) -> tuple[DataLoader, DataLoader, DataLoader]:
     # Define transformations
     mnist_transform = transforms.Compose(
         [

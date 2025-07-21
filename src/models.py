@@ -1,3 +1,5 @@
+from typing import Callable
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -42,7 +44,7 @@ class LeNet5(nn.Module):
         self.fc1 = nn.Linear(in_features=120, out_features=latent_dim)  # F6
         self.fc2 = nn.Linear(in_features=latent_dim, out_features=n_classes)  # Output
 
-    def _set_activation(self, name: str):
+    def _set_activation(self, name: str) -> Callable[[torch.Tensor], torch.Tensor]:
         """Returns the activation function specified by name."""
         name = name.lower()
 
@@ -79,13 +81,17 @@ class LeNet5(nn.Module):
 class FFLinear(nn.Module):
     """Linear layer adapted for forward-forward training."""
 
-    def __init__(self, in_features, out_features, act_fn=F.relu):
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        act_fn: Callable[[torch.Tensor], torch.Tensor] = F.relu,
+    ):
         super().__init__()
         self.linear = nn.Linear(in_features, out_features)
-        self.out_features = out_features
         self.act_fn = act_fn
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.act_fn(self.linear(x))
 
     def goodness(self, x: torch.Tensor) -> torch.Tensor:
@@ -95,12 +101,18 @@ class FFLinear(nn.Module):
 class FFConv2d(nn.Module):
     """Convolutional layer adapted for forward-forward training."""
 
-    def __init__(self, in_channels, out_channels, kernel_size, act_fn=F.relu):
+    def __init__(
+        self,
+        in_channels: int,
+        out_channels: int,
+        kernel_size: int,
+        act_fn: Callable[[torch.Tensor], torch.Tensor] = F.relu,
+    ):
         super().__init__()
         self.conv = nn.Conv2d(in_channels, out_channels, kernel_size)
         self.act_fn = act_fn
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.act_fn(self.conv(x))
 
     def goodness(self, x: torch.Tensor) -> torch.Tensor:
@@ -137,7 +149,7 @@ class FFLeNet5(nn.Module):
 
         self.layers = [self.conv1, self.conv2, self.conv3, self.fc1, self.fc2]
 
-    def _normalize(self, x: torch.Tensor, eps=1e-8) -> torch.Tensor:
+    def _normalize(self, x: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
         """Normalizes each sample to unit L2 norm.
 
         Motivation:

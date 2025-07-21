@@ -1,3 +1,5 @@
+from typing import Sequence
+
 import torch
 import torch.nn.functional as F
 from torch import nn
@@ -9,7 +11,7 @@ def forward_forward(
     model: nn.Module,
     train_loader: DataLoader,
     val_loader: DataLoader,
-    optimizers: list[Optimizer],
+    optimizers: Sequence[Optimizer],
     device: torch.device,
     n_classes: int,
     n_epochs: int,
@@ -51,7 +53,7 @@ def forward_forward(
         )
 
         # Validation phase: no gradient tracking
-        val_acc = evaluate(model, val_loader, device)
+        val_acc = evaluate(model, val_loader, n_classes, device)
 
         train_losses.append(train_loss)
         train_accuracies.append(train_acc)
@@ -74,11 +76,11 @@ def forward_forward(
 def train_one_epoch(
     model: nn.Module,
     dataloader: DataLoader,
-    optimizers: list[Optimizer],
+    optimizers: Sequence[Optimizer],
     device: torch.device,
     n_classes: int,
     threshold: float,
-) -> float:
+) -> tuple[float, float]:
     model.train()
     total_loss = 0.0
     total_samples = 0
@@ -114,7 +116,7 @@ def train_one_epoch(
             x_pos = model.post_layer_transform(x_pos, i).detach().requires_grad_()
             x_neg = model.post_layer_transform(x_neg, i).detach().requires_grad_()
 
-        # FIXME: very slow to store accuracy for each batch
+        # FIXME: very slow to store accuracy for each batch, skipping
         # with torch.no_grad():
         #     goodness_scores = torch.zeros((x.size(0), n_classes), device=device)
         #     for label in range(n_classes):
@@ -127,34 +129,36 @@ def train_one_epoch(
         #     correct += (preds == y).sum().item()
         #     total_samples += y.size(0)
 
-    # FIXME: train accuracy is not computed correctly?
     avg_loss: float = total_loss / len(dataloader)
-    accuracy: float = 100.0 * correct / total_samples
+    accuracy: float = 100.0 * correct / total_samples if total_samples > 0 else 0.0
     return avg_loss, accuracy
 
 
-def evaluate(model: nn.Module, dataloader: DataLoader, device: torch.device) -> float:
+def evaluate(
+    model: nn.Module,
+    dataloader: DataLoader,
+    n_classes: int,
+    device: torch.device,
+) -> float:
     model.eval()
-    total_samples = 0
     correct = 0
 
     with torch.no_grad():
         for x, y in dataloader:
             x, y = x.to(device), y.to(device)
-            scores = []
 
-            for class_id in range(model.fc2.out_features):
-                fake_y = torch.full_like(y, class_id)
-                x_overlay = overlay_label(x, fake_y, model.fc2.out_features)
-                g = model.goodness(x_overlay)
-                scores.append(g)
+            batch_size = x.size(0)
+            g_scores = torch.zeros((batch_size, n_classes), device=device)
 
-            logits = torch.stack(scores, dim=1)  # (B, C)
-            preds = logits.argmax(dim=1)
+            for label in range(n_classes):
+                y_label = torch.full_like(y, label)
+                x_overlay = overlay_label(x, y_label, n_classes, is_positive=True)
+                g_scores[:, label] = model.goodness(x_overlay)
+
+            preds = g_scores.argmax(dim=1)
             correct += (preds == y).sum().item()
-            total_samples += y.size(0)
 
-    accuracy: float = 100.0 * correct / total_samples
+    accuracy: float = 100.0 * correct / len(dataloader.dataset)
     return accuracy
 
 

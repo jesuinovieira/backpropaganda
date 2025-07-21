@@ -1,49 +1,15 @@
 import os
+import sys
 
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from src import models
-from src import train
-from src import utils
 
+sys.path.append(f"{os.path.dirname(__file__)}/src")  # noqa: E402
 
-def evaluate_model(
-    model: nn.Module, test_loader: torch.utils.data.DataLoader
-) -> tuple[float, list[int], list[int]]:
-    """Evaluates a trained model on test data.
-
-    Args:
-        model: Trained PyTorch model.
-        test_loader: DataLoader containing test dataset.
-
-    Returns:
-        Tuple containing:
-            - Test accuracy as a percentage.
-            - List of predicted labels.
-            - List of true labels.
-    """
-    model.eval()
-    correct = 0
-    total = 0
-    predictions: list[int] = []
-    true_labels: list[int] = []
-
-    with torch.no_grad():
-        for x, y in test_loader:
-            outputs = model(x)
-            _, predicted = torch.max(outputs.data, dim=1)
-
-            total += y.size(0)
-            correct += (predicted == y).sum().item()
-
-            predictions.extend(predicted.cpu().tolist())
-            true_labels.extend(y.cpu().tolist())
-
-    test_acc = 100.0 * correct / total
-
-    print(f"Test Accuracy: {test_acc:.2f}% | Error Rate: {100 - test_acc:.2f}%")
-    return test_acc, predictions, true_labels
+import models  # noqa: E402
+import utils  # noqa: E402
+import train.backprop  # noqa: E402
 
 
 if __name__ == "__main__":
@@ -63,12 +29,11 @@ if __name__ == "__main__":
     criterion = nn.CrossEntropyLoss()
     optimizer = optim.Adam(model.parameters(), lr=lr)
 
-    total_params = sum(p.numel() for p in model.parameters())
+    n_params = sum(p.numel() for p in model.parameters())
     print(model, "\n")
-    print(f"Total parameters: {total_params:,}")
 
     # Train model using backpropagation
-    history = train.backprop(
+    history = train.backprop.backprop(
         model=model,
         train_loader=train_loader,
         val_loader=val_loader,
@@ -85,7 +50,7 @@ if __name__ == "__main__":
     print(f"\nTraining completed. Model saved to '{save_path}'")
 
     # Evaluate model
-    test_accuracy, predictions, true_labels = evaluate_model(model, test_loader)
+    test_loss, test_acc = train.backprop.evaluate(model, test_loader, criterion, device)
 
     # print("\nDetailed Classification Report:")
     # print(classification_report(true_labels, predictions, target_names=class_names))
@@ -93,8 +58,8 @@ if __name__ == "__main__":
     # Final summary
     print("\nBackpropagation – Training Summary")
     print("-" * 60)
-    print(f"Train Accuracy: {history['train_accuracies'][-1]:.2f}%")
-    print(f"Val Accuracy: {history['val_accuracies'][-1]:.2f}%")
-    print(f"Test Accuracy: {test_accuracy:.2f}%")
-    print(f"Total Params: {total_params:,}")
-    print(f"Epochs Trained: {n_epochs}")
+    print(f"Train accuracy: {history['train_accuracies'][-1]:.2f}%")
+    print(f"Val accuracy: {history['val_accuracies'][-1]:.2f}%")
+    print(f"Test accuracy: {test_acc:.2f}%")
+    print(f"Params: {n_params:,}")
+    print(f"Epochs: {n_epochs}")

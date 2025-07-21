@@ -125,11 +125,11 @@ def train_one_epoch(
 def evaluate(
     model: nn.Module, dataloader: DataLoader, criterion: nn.Module, device: torch.device
 ) -> tuple[float, float]:
-    """Evaluates the model on validation data.
+    """Evaluates the model on given dataset.
 
     Args:
         model: PyTorch model to evaluate.
-        dataloader: DataLoader with validation samples.
+        dataloader: DataLoader for evaluation samples.
         criterion: Loss function.
         device: Device to run evaluation on.
 
@@ -138,7 +138,6 @@ def evaluate(
     """
     model.eval()
     total_loss = 0.0
-    total_samples = 0
     correct = 0
 
     with torch.no_grad():
@@ -147,12 +146,11 @@ def evaluate(
 
             outputs = model(x)
             loss = criterion(outputs, y)
+            _, preds = torch.max(outputs, dim=1)
 
             total_loss += loss.item()
-            _, preds = torch.max(outputs, dim=1)
             correct += (preds == y).sum().item()
-            total_samples += y.size(0)
 
     avg_loss: float = total_loss / len(dataloader)
-    accuracy: float = 100.0 * correct / total_samples
+    accuracy: float = 100.0 * correct / len(dataloader.dataset)
     return avg_loss, accuracy
