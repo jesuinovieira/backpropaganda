@@ -46,7 +46,7 @@ class LeNet5(nn.Module):
         self.fc1 = nn.Linear(in_features=120, out_features=latent_dim)  # F6
         self.fc2 = nn.Linear(in_features=latent_dim, out_features=n_classes)  # Output
 
-        self._initialize_weights()
+        self._initialize_weights(activation)
 
     def _set_activation(self, name: str) -> Callable[[torch.Tensor], torch.Tensor]:
         """Returns the activation function specified by name."""

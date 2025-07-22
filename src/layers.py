@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+# NOTE: wouldn't be better to inherit from nn.Linear?
 class FFLinear(nn.Module):
     """Linear layer adapted for forward-forward training."""
 
@@ -25,6 +26,7 @@ class FFLinear(nn.Module):
         return (x**2).sum(dim=1)
 
 
+# NOTE: wouldn't be better to inherit from nn.Conv2d?
 class FFConv2d(nn.Module):
     """Convolutional layer adapted for forward-forward training."""
 

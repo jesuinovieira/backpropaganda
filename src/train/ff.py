@@ -128,17 +128,18 @@ def train_one_epoch(
             x_neg = model.post_layer_transform(x_neg, i).detach().requires_grad_()
 
         # FIXME: very slow to store accuracy for each batch, skipping
-        # with torch.no_grad():
-        #     goodness_scores = torch.zeros((x.size(0), n_classes), device=device)
-        #     for label in range(n_classes):
-        #         y_label = torch.full_like(y, label)
-        #         x_overlay = overlay_label(x, y_label, n_classes, is_positive=True)
-        #         g = model.goodness(x_overlay)
-        #         goodness_scores[:, label] = g
+        with torch.no_grad():
+            batch_size = x.size(0)
+            g_scores = torch.zeros((batch_size, n_classes), device=device)
 
-        #     preds = goodness_scores.argmax(dim=1)
-        #     correct += (preds == y).sum().item()
-        #     total_samples += y.size(0)
+            for label in range(n_classes):
+                y_label = torch.full_like(y, label)
+                x_overlay = overlay_label(x, y_label, n_classes, is_positive=True)
+                g_scores[:, label] = model.goodness(x_overlay)
+
+            preds = g_scores.argmax(dim=1)
+            correct += (preds == y).sum().item()
+            total_samples += y.size(0)
 
     avg_loss: float = total_loss / len(dataloader)
     accuracy: float = 100.0 * correct / total_samples if total_samples > 0 else None
