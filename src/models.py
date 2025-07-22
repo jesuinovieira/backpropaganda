@@ -120,7 +120,7 @@ class FFLeNet5(nn.Module):
 
         # Fully connected layers
         self.fc1 = layers.FFLinear(in_features=120, out_features=latent_dim, act_fn=F.relu)  # F6 # fmt: skip # noqa: E501
-        self.fc2 = layers.FFLinear(in_features=latent_dim, out_features=n_classes, act_fn=nn.Identity())  # Output # fmt: skip # noqa: E501
+        self.fc2 = layers.FFLinear(in_features=latent_dim, out_features=n_classes, act_fn=None)  # Output # fmt: skip # noqa: E501
 
         self.layers = [self.conv1, self.conv2, self.conv3, self.fc1, self.fc2]
         self._initialize_weights()

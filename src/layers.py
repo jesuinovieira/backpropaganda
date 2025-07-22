@@ -2,47 +2,37 @@ from typing import Callable
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
 
-# NOTE: wouldn't be better to inherit from nn.Linear?
-class FFLinear(nn.Module):
+class FFLinear(nn.Linear):
     """Linear layer adapted for forward-forward training."""
 
     def __init__(
-        self,
-        in_features: int,
-        out_features: int,
-        act_fn: Callable[[torch.Tensor], torch.Tensor] = F.relu,
+        self, act_fn: Callable[[torch.Tensor], torch.Tensor] | None, *args, **kwargs
     ):
-        super().__init__()
-        self.linear = nn.Linear(in_features, out_features)
+        super().__init__(*args, **kwargs)
         self.act_fn = act_fn
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.act_fn(self.linear(x))
+        x = super().forward(x)
+        return x if self.act_fn is None else self.act_fn(x)
 
     def goodness(self, x: torch.Tensor) -> torch.Tensor:
         return (x**2).sum(dim=1)
 
 
-# NOTE: wouldn't be better to inherit from nn.Conv2d?
-class FFConv2d(nn.Module):
+class FFConv2d(nn.Conv2d):
     """Convolutional layer adapted for forward-forward training."""
 
     def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        kernel_size: int,
-        act_fn: Callable[[torch.Tensor], torch.Tensor] = F.relu,
+        self, act_fn: Callable[[torch.Tensor], torch.Tensor] | None, *args, **kwargs
     ):
-        super().__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size)
+        super().__init__(*args, **kwargs)
         self.act_fn = act_fn
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.act_fn(self.conv(x))
+        x = super().forward(x)
+        return x if self.act_fn is None else self.act_fn(x)
 
     def goodness(self, x: torch.Tensor) -> torch.Tensor:
         return (x**2).sum(dim=(1, 2, 3))
