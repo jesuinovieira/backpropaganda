@@ -5,15 +5,13 @@ import sklearn.metrics
 import torch
 import torch.nn.functional as F
 from torch import nn
-from torch.optim import Optimizer
-from torch.utils.data import DataLoader
 
 
 def forward_forward(
     model: nn.Module,
-    train_loader: DataLoader,
-    val_loader: DataLoader,
-    optimizers: Sequence[Optimizer],
+    train_loader: torch.utils.data.DataLoader,
+    val_loader: torch.utils.data.DataLoader,
+    optimizers: Sequence[torch.optim.Optimizer],
     device: torch.device,
     n_classes: int,
     n_epochs: int,
@@ -47,7 +45,7 @@ def forward_forward(
     val_accuracies: list[float] = []
     epoch_times: list[float] = []
 
-    print(f"Starting forward-forward training for {n_epochs} epochs")
+    print("Starting forward-forward training")
     print("-" * 60)
 
     for epoch in range(n_epochs):
@@ -65,12 +63,11 @@ def forward_forward(
         val_accuracies.append(val_metrics["accuracy"])
 
         # if (epoch + 1) % 5 == 0 or epoch == 0:
+        tmp_acc = f"{train_acc:6.2f}%" if train_acc else "N/A"
         print(
             f"Epoch: [{epoch + 1}/{n_epochs}]  "
             f"Train Loss: {train_loss:.4f},  "
-            f"Train Acc: {train_acc:6.2f}%,  "
-            if train_acc
-            else "Train Acc: N/A,  "
+            f"Train Acc: {tmp_acc},  "
             f"Val Acc: {val_metrics['accuracy']:6.2f}%,  "
             f"Time: {epoch_times[-1]:5.2f}s"
         )
@@ -86,16 +83,16 @@ def forward_forward(
 
 def train_one_epoch(
     model: nn.Module,
-    dataloader: DataLoader,
-    optimizers: Sequence[Optimizer],
+    dataloader: torch.utils.data.DataLoader,
+    optimizers: Sequence[torch.optim.Optimizer],
     device: torch.device,
     n_classes: int,
     threshold: float,
 ) -> tuple[float, float]:
     model.train()
     total_loss = 0.0
-    total_samples = 0
-    correct = 0
+    y_pred = []
+    y_true = []
 
     for x, y in dataloader:
         x, y = x.to(device), y.to(device)
@@ -138,17 +135,18 @@ def train_one_epoch(
                 g_scores[:, label] = model.goodness(x_overlay)
 
             preds = g_scores.argmax(dim=1)
-            correct += (preds == y).sum().item()
-            total_samples += y.size(0)
+
+            y_pred.extend(preds.cpu().numpy())
+            y_true.extend(y.cpu().numpy())
 
     avg_loss: float = total_loss / len(dataloader)
-    accuracy: float = 100.0 * correct / total_samples if total_samples > 0 else None
+    accuracy: float = sklearn.metrics.accuracy_score(y_true, y_pred)
     return avg_loss, accuracy
 
 
 def evaluate(
     model: nn.Module,
-    dataloader: DataLoader,
+    dataloader: torch.utils.data.DataLoader,
     n_classes: int,
     device: torch.device,
 ) -> dict[str, float]:

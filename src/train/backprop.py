@@ -3,16 +3,14 @@ import time
 import sklearn.metrics
 import torch
 from torch import nn
-from torch.optim import Optimizer
-from torch.utils.data import DataLoader
 
 
 def backprop(
     model: nn.Module,
-    train_loader: DataLoader,
-    val_loader: DataLoader,
+    train_loader: torch.utils.data.DataLoader,
+    val_loader: torch.utils.data.DataLoader,
     criterion: nn.Module,
-    optimizer: Optimizer,
+    optimizer: torch.optim.Optimizer,
     n_epochs: int,
     device: torch.device,
 ) -> dict[str, list[float]]:
@@ -42,7 +40,7 @@ def backprop(
     val_accuracies: list[float] = []
     epoch_times: list[float] = []
 
-    print(f"Starting backpropagation training for {n_epochs} epochs")
+    print("Starting backpropagation training")
     print("-" * 60)
 
     for epoch in range(n_epochs):
@@ -82,9 +80,9 @@ def backprop(
 
 def train_one_epoch(
     model: nn.Module,
-    dataloader: DataLoader,
+    dataloader: torch.utils.data.DataLoader,
     criterion: nn.Module,
-    optimizer: Optimizer,
+    optimizer: torch.optim.Optimizer,
     device: torch.device,
 ) -> tuple[float, float]:
     """Runs one training epoch using backpropagation.
@@ -107,8 +105,8 @@ def train_one_epoch(
     """
     model.train()
     total_loss = 0.0
-    total_samples = 0
-    correct = 0
+    y_pred = []
+    y_true = []
 
     for x, y in dataloader:
         x, y = x.to(device), y.to(device)
@@ -124,16 +122,20 @@ def train_one_epoch(
 
         total_loss += loss.item()
         _, preds = torch.max(outputs, dim=1)
-        correct += (preds == y).sum().item()
-        total_samples += y.size(0)
+
+        y_pred.extend(preds.cpu().numpy())
+        y_true.extend(y.cpu().numpy())
 
     avg_loss: float = total_loss / len(dataloader)
-    accuracy: float = 100.0 * correct / total_samples
+    accuracy: float = sklearn.metrics.accuracy_score(y_true, y_pred)
     return avg_loss, accuracy
 
 
 def evaluate(
-    model: nn.Module, dataloader: DataLoader, criterion: nn.Module, device: torch.device
+    model: nn.Module,
+    dataloader: torch.utils.data.DataLoader,
+    criterion: nn.Module,
+    device: torch.device,
 ) -> dict[str, float]:
     """Evaluates the model on given dataset.
 
