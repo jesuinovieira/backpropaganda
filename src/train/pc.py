@@ -39,12 +39,12 @@ def predictive_coding(
         running_loss, correct_predictions, total_samples = 0.0, 0, 0
         for x, y in train_loader:
             x, y = x.to(device), y.to(device)
-            targets_onehot = F.one_hot(y, num_classes=n_classes).float()
+            y_onehot = F.one_hot(y, num_classes=n_classes).float()
             vhat, loss, _, _, _ = T2PC.PCInfer(
                 model,
                 criterion,
                 x,
-                targets_onehot,
+                y_onehot,
                 "Strict",
                 eta=INFERENCE_LEARNING_RATE,
                 n=N_INFERENCE_STEPS,
@@ -65,8 +65,8 @@ def predictive_coding(
             for x, y in val_loader:
                 x, y = x.to(device), y.to(device)
                 outputs = model(x)
-                targets_onehot = F.one_hot(y, num_classes=n_classes).float()
-                loss = criterion(outputs, targets_onehot)
+                y_onehot = F.one_hot(y, num_classes=n_classes).float()
+                loss = criterion(outputs, y_onehot)
                 val_loss += loss.item()
                 _, predicted = torch.max(outputs.data, 1)
                 val_total += y.size(0)
