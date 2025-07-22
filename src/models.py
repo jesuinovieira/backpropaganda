@@ -22,18 +22,16 @@ class LeNet5(nn.Module):
         - Output: Linear(latent_dim, n_classes)
     """
 
-    def __init__(
-        self, n_classes: int = 10, latent_dim: int = 84, activation: str = "relu"
-    ):
+    def __init__(self, n_classes: int = 10, latent_dim: int = 84, act_fn: str = "relu"):
         """Initializes the LeNet-5 model.
 
         Args:
             n_classes: Number of output classes.
             latent_dim: Number of units in the penultimate fully connected layer.
-            activation: Name of the activation function to use.
+            act_fn: Name of the activation function to use.
         """
         super().__init__()
-        self.act_fn = self._set_activation(activation)
+        self.act_fn = self._set_activation(act_fn)
 
         # Convolutional layers
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=6, kernel_size=5)  # C1
@@ -46,7 +44,7 @@ class LeNet5(nn.Module):
         self.fc1 = nn.Linear(in_features=120, out_features=latent_dim)  # F6
         self.fc2 = nn.Linear(in_features=latent_dim, out_features=n_classes)  # Output
 
-        self._initialize_weights(activation)
+        self._initialize_weights(act_fn)
 
     def _set_activation(self, name: str) -> Callable[[torch.Tensor], torch.Tensor]:
         """Returns the activation function specified by name."""
@@ -206,3 +204,7 @@ class FFLeNet5(nn.Module):
         g5 = self.fc2.goodness(x)
 
         return g1 + g2 + g3 + g4 + g5
+
+
+# TODO: implement PCLeNet5
+# class PCLeNet5(nn.Module): ...
