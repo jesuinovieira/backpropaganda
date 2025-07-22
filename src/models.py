@@ -4,6 +4,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import layers
+
 
 class LeNet5(nn.Module):
     """LeNet-5 style convolutional neural network for digit classification.
@@ -44,6 +46,8 @@ class LeNet5(nn.Module):
         self.fc1 = nn.Linear(in_features=120, out_features=latent_dim)  # F6
         self.fc2 = nn.Linear(in_features=latent_dim, out_features=n_classes)  # Output
 
+        self._initialize_weights()
+
     def _set_activation(self, name: str) -> Callable[[torch.Tensor], torch.Tensor]:
         """Returns the activation function specified by name."""
         name = name.lower()
@@ -56,6 +60,20 @@ class LeNet5(nn.Module):
             return torch.sigmoid
 
         raise ValueError(f"Unsupported activation function: {name}")
+
+    def _initialize_weights(self, act_fn_name: str) -> None:
+        for m in self.modules():
+            if not isinstance(m, (nn.Conv2d, nn.Linear)):
+                continue
+
+            if act_fn_name == "relu":
+                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+            elif act_fn_name in ["tanh", "sigmoid"]:
+                nn.init.xavier_normal_(m.weight)
+            else:
+                nn.init.kaiming_uniform_(m.weight, nonlinearity="linear")
+            if m.bias is not None:
+                nn.init.constant_(m.bias, 0)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Computes the forward pass of the LeNet-5 model.
@@ -78,47 +96,6 @@ class LeNet5(nn.Module):
         return x
 
 
-class FFLinear(nn.Module):
-    """Linear layer adapted for forward-forward training."""
-
-    def __init__(
-        self,
-        in_features: int,
-        out_features: int,
-        act_fn: Callable[[torch.Tensor], torch.Tensor] = F.relu,
-    ):
-        super().__init__()
-        self.linear = nn.Linear(in_features, out_features)
-        self.act_fn = act_fn
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.act_fn(self.linear(x))
-
-    def goodness(self, x: torch.Tensor) -> torch.Tensor:
-        return (x**2).sum(dim=1)
-
-
-class FFConv2d(nn.Module):
-    """Convolutional layer adapted for forward-forward training."""
-
-    def __init__(
-        self,
-        in_channels: int,
-        out_channels: int,
-        kernel_size: int,
-        act_fn: Callable[[torch.Tensor], torch.Tensor] = F.relu,
-    ):
-        super().__init__()
-        self.conv = nn.Conv2d(in_channels, out_channels, kernel_size)
-        self.act_fn = act_fn
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.act_fn(self.conv(x))
-
-    def goodness(self, x: torch.Tensor) -> torch.Tensor:
-        return (x**2).sum(dim=(1, 2, 3))
-
-
 class FFLeNet5(nn.Module):
     """LeNet-5 architecture adapted for forward-forward training.
 
@@ -137,17 +114,31 @@ class FFLeNet5(nn.Module):
 
         # Convolutional layers
         # self.conv1 = FFConv2d(1, 6, kernel_size=5, act_fn=F.relu)  # C1
-        self.conv1 = FFConv2d(1 + n_classes, 6, kernel_size=5, act_fn=F.relu)  # C1
+        self.conv1 = layers.FFConv2d(1 + n_classes, 6, kernel_size=5, act_fn=F.relu)  # C1 # fmt: skip # noqa: E501
         self.pool1 = nn.AvgPool2d(kernel_size=2, stride=2)  # S2
-        self.conv2 = FFConv2d(6, 16, kernel_size=5, act_fn=F.relu)  # C3
+        self.conv2 = layers.FFConv2d(6, 16, kernel_size=5, act_fn=F.relu)  # C3
         self.pool2 = nn.AvgPool2d(kernel_size=2, stride=2)  # S4
-        self.conv3 = FFConv2d(16, 120, kernel_size=5, act_fn=F.relu)  # C5
+        self.conv3 = layers.FFConv2d(16, 120, kernel_size=5, act_fn=F.relu)  # C5
 
         # Fully connected layers
-        self.fc1 = FFLinear(in_features=120, out_features=latent_dim, act_fn=F.relu)  # F6 # fmt: skip # noqa: E501
-        self.fc2 = FFLinear(in_features=latent_dim, out_features=n_classes, act_fn=F.relu)  # Output # fmt: skip # noqa: E501
+        self.fc1 = layers.FFLinear(in_features=120, out_features=latent_dim, act_fn=F.relu)  # F6 # fmt: skip # noqa: E501
+        self.fc2 = layers.FFLinear(in_features=latent_dim, out_features=n_classes, act_fn=F.relu)  # Output # fmt: skip # noqa: E501
 
         self.layers = [self.conv1, self.conv2, self.conv3, self.fc1, self.fc2]
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, layers.FFConv2d):
+                layer = m.conv
+            elif isinstance(m, layers.FFLinear):
+                layer = m.linear
+            else:
+                continue
+
+            nn.init.kaiming_normal_(layer.weight, mode="fan_out", nonlinearity="relu")
+            if layer.bias is not None:
+                nn.init.constant_(layer.bias, 0)
 
     def _normalize(self, x: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
         """Normalizes each sample to unit L2 norm.
