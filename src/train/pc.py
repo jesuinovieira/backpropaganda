@@ -36,7 +36,6 @@ def predictive_coding(
 
         for x, y in train_loader:
             x, y = x.to(device), y.to(device)
-            # y_onehot = F.one_hot(y, num_classes=n_classes).float()
 
             vhat, loss, _, _, _ = T2PC.PCInfer(
                 model,
@@ -64,10 +63,8 @@ def predictive_coding(
         with torch.no_grad():
             for x, y in val_loader:
                 x, y = x.to(device), y.to(device)
-                # y_onehot = F.one_hot(y, num_classes=n_classes).float()
 
                 outputs = model(x)
-
                 loss = criterion(outputs, y)
                 val_loss += loss.item()
 
@@ -80,7 +77,7 @@ def predictive_coding(
         history["epoch_times"].append(time.time() - t1)
 
         print(
-            f"Epoch: [{epoch + 1}/{n_epochs}]  "
+            f"Epoch: [{epoch + 1:02d}/{n_epochs}]  "
             f"Train Loss: {history['train_losses'][-1]:.4f},  "
             f"Train Acc: {history['train_accuracies'][-1]:6.2f},  "
             f"Val Loss: {history['val_losses'][-1]:.4f},  "
@@ -89,3 +86,24 @@ def predictive_coding(
         )
 
     return history
+
+
+# TODO: train_one_epoch
+def train_one_epoch():
+    pass
+
+
+def evaluate(
+    model,
+    dataloader,
+    criterion,
+    device: torch.device,
+):
+    from . import backprop
+
+    return backprop.evaluate(
+        model=model,
+        dataloader=dataloader,
+        criterion=criterion,
+        device=device,
+    )

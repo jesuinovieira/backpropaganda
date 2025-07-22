@@ -61,7 +61,7 @@ def backprop(
 
         # if (epoch + 1) % 5 == 0 or epoch == 0:
         print(
-            f"Epoch: [{epoch + 1}/{n_epochs}]  "
+            f"Epoch: [{epoch + 1:02d}/{n_epochs}]  "
             f"Train Loss: {train_loss:.4f},  "
             f"Train Acc: {train_acc:6.2f},  "
             f"Val Loss: {val_metrics['loss']:.4f},  "

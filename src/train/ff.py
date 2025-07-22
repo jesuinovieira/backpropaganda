@@ -65,7 +65,7 @@ def forward_forward(
         # if (epoch + 1) % 5 == 0 or epoch == 0:
         tmp_acc = f"{train_acc:6.2f}%" if train_acc else "N/A"
         print(
-            f"Epoch: [{epoch + 1}/{n_epochs}]  "
+            f"Epoch: [{epoch + 1:02d}/{n_epochs}]  "
             f"Train Loss: {train_loss:.4f},  "
             f"Train Acc: {tmp_acc},  "
             f"Val Acc: {val_metrics['accuracy']:6.2f},  "
