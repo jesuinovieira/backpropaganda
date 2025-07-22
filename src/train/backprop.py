@@ -63,9 +63,9 @@ def backprop(
         print(
             f"Epoch: [{epoch + 1}/{n_epochs}]  "
             f"Train Loss: {train_loss:.4f},  "
-            f"Train Acc: {train_acc:6.2f}%,  "
+            f"Train Acc: {train_acc:6.2f},  "
             f"Val Loss: {val_metrics['loss']:.4f},  "
-            f"Val Acc: {val_metrics['accuracy']:6.2f}%,  "
+            f"Val Acc: {val_metrics['accuracy']:6.2f},  "
             f"Time: {epoch_times[-1]:5.2f}s"
         )
 

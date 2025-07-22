@@ -21,7 +21,6 @@ def predictive_coding(
     """Train the CNN model using Predictive Coding (Strict)."""
     model.to(device)
 
-    epoch_times: list[float] = []
     history = {
         "train_losses": [],
         "train_accuracies": [],
@@ -39,6 +38,7 @@ def predictive_coding(
         running_loss, correct_predictions, total_samples = 0.0, 0, 0
         for x, y in train_loader:
             x, y = x.to(device), y.to(device)
+
             y_onehot = F.one_hot(y, num_classes=n_classes).float()
             vhat, loss, _, _, _ = T2PC.PCInfer(
                 model,
@@ -49,40 +49,45 @@ def predictive_coding(
                 eta=INFERENCE_LEARNING_RATE,
                 n=N_INFERENCE_STEPS,
             )
+
             optimizer.step()
             optimizer.zero_grad()
             running_loss += loss.item()
+
             _, predicted_labels = torch.max(vhat[-1].data, 1)
             total_samples += y.size(0)
             correct_predictions += (predicted_labels == y).sum().item()
 
         history["train_losses"].append(running_loss / len(train_loader))
-        history["train_accuracies"].append(100.0 * correct_predictions / total_samples)
+        history["train_accuracies"].append(correct_predictions / total_samples)
 
         model.eval()
         val_loss, val_correct, val_total = 0.0, 0, 0
         with torch.no_grad():
             for x, y in val_loader:
                 x, y = x.to(device), y.to(device)
+
                 outputs = model(x)
                 y_onehot = F.one_hot(y, num_classes=n_classes).float()
+
                 loss = criterion(outputs, y_onehot)
                 val_loss += loss.item()
+
                 _, predicted = torch.max(outputs.data, 1)
                 val_total += y.size(0)
                 val_correct += (predicted == y).sum().item()
 
         history["val_losses"].append(val_loss / len(val_loader))
-        history["val_accuracies"].append(100.0 * val_correct / val_total)
+        history["val_accuracies"].append(val_correct / val_total)
         history["epoch_times"].append(time.time() - t1)
 
         print(
             f"Epoch: [{epoch + 1}/{n_epochs}]  "
             f"Train Loss: {history['train_losses'][-1]:.4f},  "
-            f"Train Acc: {history['train_accuracies'][-1]:6.2f}%,  "
+            f"Train Acc: {history['train_accuracies'][-1]:6.2f},  "
             f"Val Loss: {history['val_losses'][-1]:.4f},  "
-            f"Val Acc: {history['val_accuracies'][-1]:6.2f}%,  "
-            f"Time: {epoch_times[-1]:5.2f}s"
+            f"Val Acc: {history['val_accuracies'][-1]:6.2f},  "
+            f"Time: { history['epoch_times'][-1]:5.2f}s"
         )
 
     return history
