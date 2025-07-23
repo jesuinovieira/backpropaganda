@@ -11,11 +11,10 @@ class FFLinear(nn.Linear):
         self,
         in_features: int,
         out_features: int,
-        *args,
         act_fn: Callable[[torch.Tensor], torch.Tensor] | None = None,
         **kwargs
     ):
-        super().__init__(in_features, out_features, *args, **kwargs)
+        super().__init__(in_features, out_features, **kwargs)
         self.act_fn = act_fn
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
