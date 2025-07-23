@@ -193,6 +193,49 @@ def PCLeNet5(n_classes: int = 10, latent_dim: int = 84) -> nn.Sequential:
     return model
 
 
+class PFFLeNet5(nn.Module):
+    def __init__(self, label_dim=10, hidden_size=256):
+        super().__init__()
+
+        # Convolutional layers (LeNet-like)
+        self.conv1 = nn.Conv2d(1, 6, kernel_size=5)  # C1
+        self.pool1 = nn.AvgPool2d(2, 2)  # S2
+        self.conv2 = nn.Conv2d(6, 16, kernel_size=5)  # C3
+        self.pool2 = nn.AvgPool2d(2, 2)  # S4
+        self.conv3 = nn.Conv2d(16, 120, kernel_size=5)  # C5 - Reduced kernel size
+
+        self.feature_dim = (
+            120 * 2 * 2
+        )  # Final flattened CNN output after conv3 (kernel 3)
+        self.hidden_size = hidden_size
+        self.label_dim = label_dim
+
+        # Representation & generative pathways
+        self.rep = nn.Linear(self.feature_dim + label_dim + hidden_size, hidden_size)
+        self.gen = nn.Linear(hidden_size, self.feature_dim + label_dim)
+
+    def extract_features(self, x):
+        x = F.relu(self.conv1(x))
+        x = self.pool1(x)
+        x = F.relu(self.conv2(x))
+        x = self.pool2(x)
+        x = F.relu(self.conv3(x))
+        return x.view(x.size(0), -1)  # Flatten
+
+    def forward_step(self, x, y_onehot, h):
+        feats = self.extract_features(x)
+        u = torch.cat([feats, y_onehot, h], dim=1)
+        h_pred = torch.tanh(self.rep(u))
+        recon = torch.sigmoid(self.gen(h_pred))
+        return h_pred, recon
+
+    def compute_goodness(self, h):
+        return torch.sum(h**2, dim=1)
+
+    def forward(self, x, y_onehot, h):
+        return self.forward_step(x, y_onehot, h)
+
+
 def _initialize_weights(model, act_fn_name: str) -> None:
     for m in model.modules():
         if not isinstance(m, (nn.Conv2d, nn.Linear)):
