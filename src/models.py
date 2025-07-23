@@ -184,8 +184,8 @@ def PCLeNet5(n_classes: int = 10, latent_dim: int = 84) -> nn.Sequential:
     model = nn.Sequential(
         nn.Sequential(nn.Conv2d(1, 6, 5), nn.ReLU(), nn.MaxPool2d(2, 2)),
         nn.Sequential(nn.Conv2d(6, 16, 5), nn.ReLU(), nn.MaxPool2d(2)),
-        nn.Sequential(nn.Flatten(), nn.Linear(16 * 5 * 5, 120), nn.ReLU()),
-        nn.Sequential(nn.Linear(120, latent_dim), nn.ReLU()),
+        nn.Sequential(nn.Conv2d(16, 120, 5), nn.ReLU()),
+        nn.Sequential(nn.Flatten(), nn.Linear(120, latent_dim), nn.ReLU()),
         nn.Sequential(nn.Linear(latent_dim, n_classes)),
     )
 
