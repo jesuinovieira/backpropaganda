@@ -52,7 +52,7 @@ def predictive_coding(
         val_accuracies.append(val_metrics["accuracy"])
 
         print(
-            f"Epoch: [{epoch + 1:02d}/{n_epochs}]  "
+            f"Epoch: [{epoch + 1:02d}/{n_epochs:02d}]  "
             f"Train Loss: {train_loss:.4f},  "
             f"Train Acc: {train_acc:6.2f},  "
             f"Val Loss: {val_metrics['loss']:.4f},  "

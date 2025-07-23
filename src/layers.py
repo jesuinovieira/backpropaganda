@@ -8,9 +8,14 @@ class FFLinear(nn.Linear):
     """Linear layer adapted for forward-forward training."""
 
     def __init__(
-        self, act_fn: Callable[[torch.Tensor], torch.Tensor] | None, *args, **kwargs
+        self,
+        in_features: int,
+        out_features: int,
+        *args,
+        act_fn: Callable[[torch.Tensor], torch.Tensor] | None = None,
+        **kwargs
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(in_features, out_features, *args, **kwargs)
         self.act_fn = act_fn
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -25,9 +30,14 @@ class FFConv2d(nn.Conv2d):
     """Convolutional layer adapted for forward-forward training."""
 
     def __init__(
-        self, act_fn: Callable[[torch.Tensor], torch.Tensor] | None, *args, **kwargs
+        self,
+        in_features: int,
+        out_features: int,
+        *args,
+        act_fn: Callable[[torch.Tensor], torch.Tensor] | None = None,
+        **kwargs
     ):
-        super().__init__(*args, **kwargs)
+        super().__init__(in_features, out_features, *args, **kwargs)
         self.act_fn = act_fn
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:

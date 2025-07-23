@@ -44,7 +44,7 @@ class LeNet5(nn.Module):
         self.fc1 = nn.Linear(in_features=120, out_features=latent_dim)  # F6
         self.fc2 = nn.Linear(in_features=latent_dim, out_features=n_classes)  # Output
 
-        self._initialize_weights(act_fn)
+        _initialize_weights(self, act_fn_name=act_fn)
 
     def _set_activation(self, name: str) -> Callable[[torch.Tensor], torch.Tensor]:
         """Returns the activation function specified by name."""
@@ -58,20 +58,6 @@ class LeNet5(nn.Module):
             return torch.sigmoid
 
         raise ValueError(f"Unsupported activation function: {name}")
-
-    def _initialize_weights(self, act_fn_name: str) -> None:
-        for m in self.modules():
-            if not isinstance(m, (nn.Conv2d, nn.Linear)):
-                continue
-
-            if act_fn_name == "relu":
-                nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
-            elif act_fn_name in ["tanh", "sigmoid"]:
-                nn.init.xavier_normal_(m.weight)
-            else:
-                nn.init.kaiming_uniform_(m.weight, nonlinearity="linear")
-            if m.bias is not None:
-                nn.init.constant_(m.bias, 0)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Computes the forward pass of the LeNet-5 model.
@@ -123,20 +109,7 @@ class FFLeNet5(nn.Module):
         self.fc2 = layers.FFLinear(in_features=latent_dim, out_features=n_classes, act_fn=None)  # Output # fmt: skip # noqa: E501
 
         self.layers = [self.conv1, self.conv2, self.conv3, self.fc1, self.fc2]
-        self._initialize_weights()
-
-    def _initialize_weights(self):
-        for m in self.modules():
-            if isinstance(m, layers.FFConv2d):
-                layer = m.conv
-            elif isinstance(m, layers.FFLinear):
-                layer = m.linear
-            else:
-                continue
-
-            nn.init.kaiming_normal_(layer.weight, mode="fan_out", nonlinearity="relu")
-            if layer.bias is not None:
-                nn.init.constant_(layer.bias, 0)
+        _initialize_weights(self, act_fn_name="relu")
 
     def _normalize(self, x: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
         """Normalizes each sample to unit L2 norm.
@@ -206,5 +179,31 @@ class FFLeNet5(nn.Module):
         return g1 + g2 + g3 + g4 + g5
 
 
-# TODO: implement PCLeNet5
-# class PCLeNet5(nn.Module): ...
+def PCLeNet5(n_classes: int = 10, latent_dim: int = 84) -> nn.Sequential:
+    # TODO: implement PCLeNet5 class
+    model = nn.Sequential(
+        nn.Sequential(nn.Conv2d(1, 6, 5), nn.ReLU(), nn.MaxPool2d(2, 2)),
+        nn.Sequential(nn.Conv2d(6, 16, 5), nn.ReLU(), nn.MaxPool2d(2)),
+        nn.Sequential(nn.Flatten(), nn.Linear(16 * 5 * 5, 120), nn.ReLU()),
+        nn.Sequential(nn.Linear(120, latent_dim), nn.ReLU()),
+        nn.Sequential(nn.Linear(latent_dim, n_classes)),
+    )
+
+    _initialize_weights(model, act_fn_name="relu")
+    return model
+
+
+def _initialize_weights(model, act_fn_name: str) -> None:
+    for m in model.modules():
+        if not isinstance(m, (nn.Conv2d, nn.Linear)):
+            continue
+
+        if act_fn_name == "relu":
+            nn.init.kaiming_normal_(m.weight, mode="fan_out", nonlinearity="relu")
+        elif act_fn_name in ["tanh", "sigmoid"]:
+            nn.init.xavier_normal_(m.weight)
+        else:
+            nn.init.kaiming_uniform_(m.weight, nonlinearity="linear")
+
+        if m.bias is not None:
+            nn.init.constant_(m.bias, 0)
