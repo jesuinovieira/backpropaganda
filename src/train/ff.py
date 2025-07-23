@@ -125,19 +125,19 @@ def train_one_epoch(
             x_neg = model.post_layer_transform(x_neg, i).detach().requires_grad_()
 
         # FIXME: very slow to store accuracy for each batch, skipping
-        with torch.no_grad():
-            batch_size = x.size(0)
-            g_scores = torch.zeros((batch_size, n_classes), device=device)
+        # with torch.no_grad():
+        #     batch_size = x.size(0)
+        #     g_scores = torch.zeros((batch_size, n_classes), device=device)
 
-            for label in range(n_classes):
-                y_label = torch.full_like(y, label)
-                x_overlay = overlay_label(x, y_label, n_classes, is_positive=True)
-                g_scores[:, label] = model.goodness(x_overlay)
+        #     for label in range(n_classes):
+        #         y_label = torch.full_like(y, label)
+        #         x_overlay = overlay_label(x, y_label, n_classes, is_positive=True)
+        #         g_scores[:, label] = model.goodness(x_overlay)
 
-            preds = g_scores.argmax(dim=1)
+        #     preds = g_scores.argmax(dim=1)
 
-            y_pred.extend(preds.cpu().numpy())
-            y_true.extend(y.cpu().numpy())
+        #     y_pred.extend(preds.cpu().numpy())
+        #     y_true.extend(y.cpu().numpy())
 
     avg_loss: float = total_loss / len(dataloader)
     accuracy: float = sklearn.metrics.accuracy_score(y_true, y_pred) if y_true else None
