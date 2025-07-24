@@ -50,10 +50,12 @@ def forward_forward(
 
     for epoch in range(n_epochs):
         t1 = time.time()
-        train_loss, train_acc = train_one_epoch(
+        train_loss, train_acc, train_acc_times = train_one_epoch(
             model, train_loader, optimizers, device, n_classes, threshold
         )
-        epoch_times.append(time.time() - t1)
+        # NOTE: do not conside train_acc_times in epoch time (tracking accuracy is
+        # optional and for FF very innefficient since it runs for each class)
+        epoch_times.append(time.time() - t1 - train_acc_times)
 
         # Validation phase: no gradient tracking
         val_metrics = evaluate(model, val_loader, n_classes, device)
@@ -69,7 +71,7 @@ def forward_forward(
             f"Train Loss: {train_loss:.4f},  "
             f"Train Acc: {tmp_acc},  "
             f"Val Acc: {val_metrics['accuracy']:6.2f},  "
-            f"Time: {epoch_times[-1]:5.2f}s"
+            f"Time: {epoch_times[-1]:5.2f}s (+{train_acc_times:.2f}s)"
         )
 
     return {
@@ -88,11 +90,12 @@ def train_one_epoch(
     device: torch.device,
     n_classes: int,
     threshold: float,
-) -> tuple[float, float]:
+) -> tuple[float, float, float]:
     model.train()
     total_loss = 0.0
     y_pred = []
     y_true = []
+    acc_times = []
 
     for x, y in dataloader:
         x, y = x.to(device), y.to(device)
@@ -124,7 +127,8 @@ def train_one_epoch(
             x_pos = model.post_layer_transform(x_pos, i).detach().requires_grad_()
             x_neg = model.post_layer_transform(x_neg, i).detach().requires_grad_()
 
-        # NOTE: enable/disable to save validation accuracy
+        # NOTE: enable/disable to save train accuracy
+        t1 = time.time()
         with torch.no_grad():
             batch_size = x.size(0)
             g_scores = torch.zeros((batch_size, n_classes), device=device)
@@ -138,10 +142,11 @@ def train_one_epoch(
 
             y_pred.extend(preds.cpu().numpy())
             y_true.extend(y.cpu().numpy())
+        acc_times.append(time.time() - t1)
 
     avg_loss: float = total_loss / len(dataloader)
     accuracy: float = sklearn.metrics.accuracy_score(y_true, y_pred) if y_true else None
-    return avg_loss, accuracy
+    return avg_loss, accuracy, sum(acc_times)
 
 
 def evaluate(
